@@ -1,0 +1,38 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [development]
+  pull_request:
+    branches: [development]
+    types: [closed]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, x64]   # runner trên EC2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install -r requirements.txt
+
+      # Mồi: đổi port app.py 5000 -> 6000 trong workspace CI (không commit)
+      - name: Patch port to 6000
+        run: sed -i 's/port=5000/port=6000/g' app.py
+
+      # Đồng bộ mã sang EC2 rồi build & run
+      - name: Sync source to ~/app-src
+        run: |
+          mkdir -p $HOME/app-src
+          rsync -a --delete ./ $HOME/app-src/
+
+      - name: Deploy
+        run: |
+          IMAGE=lab-flask-app
+          # dừng 5000 nếu có
+          docker rm -f app5000 2>/dev/null || true
+          # dừng 6000 nếu đang chạy để chạy lại sạch
+          docker rm -f app6000 2>/dev/null || true
+          docker build -t $IMAGE:latest $HOME/app-src
+          docker run -d --name app6000 -p 6000:6000 $IMAGE:latest python app.py
+          curl -sS http://localhost:6000/health || true
