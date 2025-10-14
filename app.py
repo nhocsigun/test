@@ -6,8 +6,8 @@ import os
 app = Flask(__name__)
 
 # S3 client
-s3 = boto3.client('s3', region_name='us-east-1')
-bucket = os.environ['S3_BUCKET']
+s3 = boto3.client('s3', region_name='ap-southeast-2')
+bucket = os.getenv("S3_BUCKET")
 
 # HTML form upload
 HTML_FORM = """

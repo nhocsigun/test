@@ -4,10 +4,10 @@ services:
   web:
     build: .
     ports:
-      - "5001:5000"
+      - "5000:5000"
     environment:
-      S3_BUCKET: "s3bucketdocker"
-      DB_HOST: "database-1.ce9swmqyyoch.us-east-1.rds.amazonaws.com"
+      S3_BUCKET: "s3bucketdocker1"
+      DB_HOST: "appdb.cxo6yq4oci87.ap-southeast-2.rds.amazonaws.com"
       DB_NAME: "appdb"
       DB_USER: "appuser"
       DB_PASS: "12345678"
