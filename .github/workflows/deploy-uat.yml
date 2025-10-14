@@ -6,11 +6,11 @@ on:
   workflow_dispatch:        # Manual trigger (nâng cao)
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  ECR_REPO: lab-flask                 # hoặc dùng secrets.ECR_REPO
-  ECS_CLUSTER: flask-cluster          # đổi theo bạn
-  ECS_SERVICE: flask-svc              # đổi theo bạn
+  AWS_REGION: ap-southeast-2
+  AWS_ACCOUNT_ID: 060314909360
+  ECR_REPO: lab-flask                 
+  ECS_CLUSTER: flask-cluster          
+  ECS_SERVICE: flask              
   SECRET_ID: flask-app/uat            # secret name hoặc ARN
   TASKDEF_FILE: ecs-taskdef.json      # file trong repo
 
