@@ -8,6 +8,7 @@ on:
 env:
   AWS_REGION: ap-southeast-2
   AWS_ACCOUNT_ID: 060314909360
+  REGISTRY: "060314909360.dkr.ecr.ap-southeast-2.amazonaws.com"
   ECR_REPO: lab-flask                 
   ECS_CLUSTER: flask-cluster          
   ECS_SERVICE: flask              
