@@ -11,8 +11,8 @@ env:
   ECR_REPO: lab-flask                 
   ECS_CLUSTER: flask-cluster          
   ECS_SERVICE: flask              
-  SECRET_ID: key-env            # secret name hoặc ARN
-  TASKDEF_FILE: ecs-taskdef.json      # file trong repo
+  SECRET_ID: key-env            
+  TASKDEF_FILE: ecs-taskdef.json     
 
 jobs:
   deploy:
@@ -37,10 +37,10 @@ jobs:
           SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "${SECRET_ID}" --query SecretString --output text)
           # mask all values
           python - <<'PY'
-import os, json, sys
-j=json.loads(os.environ["SECRET_JSON"])
-for v in j.values(): print(f"::add-mask::{v}")
-PY
+  import os, json, sys
+  j=json.loads(os.environ["SECRET_JSON"])
+  for v in j.values(): print(f"::add-mask::{v}")
+  PY
           echo "$SECRET_JSON" | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > .env
           chmod 600 .env
         env:
