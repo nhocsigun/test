@@ -11,7 +11,7 @@ env:
   ECR_REPO: lab-flask                 
   ECS_CLUSTER: flask-cluster          
   ECS_SERVICE: flask              
-  SECRET_ID: flask-app/uat            # secret name hoặc ARN
+  SECRET_ID: key-env            # secret name hoặc ARN
   TASKDEF_FILE: ecs-taskdef.json      # file trong repo
 
 jobs:
