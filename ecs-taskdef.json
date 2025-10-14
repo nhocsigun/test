@@ -1,0 +1,56 @@
+{
+  "family": "flask-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::060314909360:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::060314909360:role/flaskTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "flask",
+      "image": "060314909360.dkr.ecr.ap-southeast-2.amazonaws.com/lab-flask:REPLACE_TAG",
+      "portMappings": [
+        { "containerPort": 5000, "protocol": "tcp" }
+      ],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/flask-app",
+          "awslogs-region": "ap-southeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "secrets": [
+        {
+          "name": "DB_HOST",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:060314909360:secret:flask-app/uat:DB_HOST::"
+        },
+        {
+          "name": "DB_USER",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:060314909360:secret:flask-app/uat:DB_USER::"
+        },
+        {
+          "name": "DB_PASS",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:060314909360:secret:flask-app/uat:DB_PASS::"
+        },
+        {
+          "name": "DB_NAME",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:060314909360:secret:flask-app/uat:DB_NAME::"
+        },
+        {
+          "name": "DB_PORT",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:060314909360:secret:flask-app/uat:DB_PORT::"
+        }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 10
+      }
+    }
+  ]
+}
