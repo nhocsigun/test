@@ -1,9 +1,9 @@
-name: UAT Deploy to ECS (Fargate)
+name: Deploy UAT (ECS)
 
 on:
   push:
-    branches: [ "uat" ]
-  workflow_dispatch:        # Manual trigger (nâng cao)
+    branches: [uat]
+  workflow_dispatch:
 
 env:
   AWS_REGION: ap-southeast-2
@@ -12,85 +12,76 @@ env:
   ECS_CLUSTER: flask-cluster          
   ECS_SERVICE: flask              
   SECRET_ID: key-env            
-  TASKDEF_FILE: ecs-taskdef.json     
+  TASKDEF_FILE: ecs-taskdef.json
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      # Auth tới AWS bằng Access Keys
-      - name: Configure AWS credentials (Access Keys)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Lấy secret JSON -> .env (tạm thời, không in ra log)
-      - name: Fetch Secrets -> .env (ephemeral)
-        run: |
-          set -e
-          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "${SECRET_ID}" --query SecretString --output text)
-          # mask all values
-          python - <<'PY'
-  import os, json, sys
-  j=json.loads(os.environ["SECRET_JSON"])
-  for v in j.values(): print(f"::add-mask::{v}")
-  PY
-          echo "$SECRET_JSON" | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > .env
-          chmod 600 .env
-        env:
-          SECRET_JSON: ${{ steps.fetch_secrets.outputs.secret }}
-        shell: bash
-        id: fetch_secrets
-
-      # Login ECR
-      - name: Login to ECR
+      - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Build & Push image (tag theo short SHA)
-      - name: Build and Push
+      # --- Lấy secret và tạo file .env ---
+      - name: Fetch Secrets -> .env (ephemeral)
+        id: fetch_secrets
+        shell: bash
+        env:
+          SECRET_ID: ${{ env.SECRET_ID }}
         run: |
-          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${GITHUB_SHA::7}
-          docker build -t "${IMAGE_URI}" .
-          docker push "${IMAGE_URI}"
-          echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_ENV
+          set -e
+          echo "Fetching secrets from Secrets Manager..."
+          SECRET_JSON=$(aws secretsmanager get-secret-value \
+            --secret-id "$SECRET_ID" \
+            --query SecretString --output text)
 
-      # Render taskdef: thay image, account, region (có sẵn file ecs-taskdef.json)
-      - name: Render task definition
-        run: |
-          sed -i "s#ACCOUNT_ID#${AWS_ACCOUNT_ID}#g" ${TASKDEF_FILE}
-          sed -i "s#REGION#${AWS_REGION}#g" ${TASKDEF_FILE}
-          sed -i "s#REPLACE_TAG#${GITHUB_SHA::7}#g" ${TASKDEF_FILE}
+          # Mask all values
+          for v in $(echo "$SECRET_JSON" | jq -r '.[]'); do
+            echo "::add-mask::$v"
+          done
 
-      # Register Task Definition
-      - name: Register task definition
-        id: register
-        run: |
-          ARN=$(aws ecs register-task-definition \
-            --cli-input-json file://$TASKDEF_FILE \
-            --query 'taskDefinition.taskDefinitionArn' --output text)
-          echo "TASK_DEF_ARN=$ARN" >> $GITHUB_ENV
-          echo "$ARN"
+          # Write .env file
+          echo "$SECRET_JSON" | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > .env
+          chmod 600 .env
+          echo ".env file generated"
 
-      # Trigger rolling update ECS Service
-      - name: Update ECS service (rolling update)
+      # --- Build & Push Docker image ---
+      - name: Build Docker image
         run: |
+          echo "Building image..."
+          docker build -t $REGISTRY/$ECR_REPOSITORY:latest .
+          docker tag $REGISTRY/$ECR_REPOSITORY:latest $REGISTRY/$ECR_REPOSITORY:${IMAGE_TAG}
+
+      - name: Push image to ECR
+        run: |
+          echo "Pushing image to ECR..."
+          docker push $REGISTRY/$ECR_REPOSITORY:latest
+          docker push $REGISTRY/$ECR_REPOSITORY:${IMAGE_TAG}
+
+      # --- Rolling update ECS service ---
+      - name: Force new ECS deployment
+        run: |
+          echo "Triggering ECS rolling update..."
           aws ecs update-service \
-            --cluster "${ECS_CLUSTER}" \
-            --service "${ECS_SERVICE}" \
-            --task-definition "${TASK_DEF_ARN}" \
-            --force-new-deployment
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --force-new-deployment \
+            --region "$AWS_REGION"
+          echo "ECS rolling update started"
 
-      - name: Wait for service stable
+      - name: Show ECS service status
         run: |
-          aws ecs wait services-stable --cluster "${ECS_CLUSTER}" --services "${ECS_SERVICE}"
-
-      # Cleanup .env
-      - name: Cleanup
-        if: always()
-        run: shred -u .env || rm -f .env
+          aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query 'services[0].{status:status,desired:desiredCount,running:runningCount}'
