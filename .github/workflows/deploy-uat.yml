@@ -1,0 +1,96 @@
+name: UAT Deploy to ECS (Fargate)
+
+on:
+  push:
+    branches: [ "uat" ]
+  workflow_dispatch:        # Manual trigger (nâng cao)
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  ECR_REPO: lab-flask                 # hoặc dùng secrets.ECR_REPO
+  ECS_CLUSTER: flask-cluster          # đổi theo bạn
+  ECS_SERVICE: flask-svc              # đổi theo bạn
+  SECRET_ID: flask-app/uat            # secret name hoặc ARN
+  TASKDEF_FILE: ecs-taskdef.json      # file trong repo
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Auth tới AWS bằng Access Keys
+      - name: Configure AWS credentials (Access Keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Lấy secret JSON -> .env (tạm thời, không in ra log)
+      - name: Fetch Secrets -> .env (ephemeral)
+        run: |
+          set -e
+          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "${SECRET_ID}" --query SecretString --output text)
+          # mask all values
+          python - <<'PY'
+import os, json, sys
+j=json.loads(os.environ["SECRET_JSON"])
+for v in j.values(): print(f"::add-mask::{v}")
+PY
+          echo "$SECRET_JSON" | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > .env
+          chmod 600 .env
+        env:
+          SECRET_JSON: ${{ steps.fetch_secrets.outputs.secret }}
+        shell: bash
+        id: fetch_secrets
+
+      # Login ECR
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Build & Push image (tag theo short SHA)
+      - name: Build and Push
+        run: |
+          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${GITHUB_SHA::7}
+          docker build -t "${IMAGE_URI}" .
+          docker push "${IMAGE_URI}"
+          echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_ENV
+
+      # Render taskdef: thay image, account, region (có sẵn file ecs-taskdef.json)
+      - name: Render task definition
+        run: |
+          sed -i "s#ACCOUNT_ID#${AWS_ACCOUNT_ID}#g" ${TASKDEF_FILE}
+          sed -i "s#REGION#${AWS_REGION}#g" ${TASKDEF_FILE}
+          sed -i "s#REPLACE_TAG#${GITHUB_SHA::7}#g" ${TASKDEF_FILE}
+
+      # Register Task Definition
+      - name: Register task definition
+        id: register
+        run: |
+          ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://$TASKDEF_FILE \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "TASK_DEF_ARN=$ARN" >> $GITHUB_ENV
+          echo "$ARN"
+
+      # Trigger rolling update ECS Service
+      - name: Update ECS service (rolling update)
+        run: |
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${ECS_SERVICE}" \
+            --task-definition "${TASK_DEF_ARN}" \
+            --force-new-deployment
+
+      - name: Wait for service stable
+        run: |
+          aws ecs wait services-stable --cluster "${ECS_CLUSTER}" --services "${ECS_SERVICE}"
+
+      # Cleanup .env
+      - name: Cleanup
+        if: always()
+        run: shred -u .env || rm -f .env
