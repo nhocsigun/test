@@ -2,37 +2,59 @@ name: Deploy UAT (ECS)
 
 on:
   push:
-    branches: [uat]
+    branches: [ uat ]
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Optional: chọn image tag để deploy (mặc định là commit SHA)"
+        description: "Optional: chọn image tag để deploy (để trống = dùng short SHA)"
         required: false
         default: ""
+
 env:
   AWS_REGION: ap-southeast-2
   AWS_ACCOUNT_ID: 060314909360
   REGISTRY: 060314909360.dkr.ecr.ap-southeast-2.amazonaws.com
-  ECR_REPOSITORY: lab-flask                 
-  ECS_CLUSTER: flask          
-  ECS_SERVICE: lab-flask              
-  SECRET_ID: key-env            
+  ECR_REPOSITORY: lab-flask
+  ECS_CLUSTER: flask
+  ECS_SERVICE: lab-flask
+  SECRET_ID: key-env
   TASKDEF_FILE: ecs-taskdef.json
-  IMAGE_TAG: c14cfa9292ac11e3d3547deb5cc47715c753277f
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-        #BẮT BUỘC cho OIDC (đặt ở cấp job)
+
+    # BẮT BUỘC cho OIDC (đặt ở cấp job)
     permissions:
       id-token: write
       contents: read
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      # Auth bằng OIDC (KHÔNG dùng access key)
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::060314909360:role/gha-oidc-uat-deployer   # <-- thay đúng ARN role của bạn nếu khác
+          role-session-name: github-actions
+          aws-region: ${{ env.AWS_REGION }}
 
+      # Kiểm chứng đang dùng OIDC
+      - name: Who am I (verify OIDC)
+        run: aws sts get-caller-identity
+
+      # Chọn TAG deploy: ưu tiên input, nếu trống dùng short SHA
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          fi
+          echo "Using tag: ${IMAGE_TAG}"
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -50,7 +72,7 @@ jobs:
             --secret-id "$SECRET_ID" \
             --query SecretString --output text)
 
-          # Mask all values
+          # Mask all values để không lộ log
           for v in $(echo "$SECRET_JSON" | jq -r '.[]'); do
             echo "::add-mask::$v"
           done
@@ -63,12 +85,14 @@ jobs:
       # --- Build & Push Docker image ---
       - name: Build Docker image
         run: |
+          set -e
           echo "Building image..."
           docker build -t $REGISTRY/$ECR_REPOSITORY:latest .
           docker tag $REGISTRY/$ECR_REPOSITORY:latest $REGISTRY/$ECR_REPOSITORY:${IMAGE_TAG}
 
       - name: Push image to ECR
         run: |
+          set -e
           echo "Pushing image to ECR..."
           docker push $REGISTRY/$ECR_REPOSITORY:latest
           docker push $REGISTRY/$ECR_REPOSITORY:${IMAGE_TAG}
