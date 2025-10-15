@@ -14,7 +14,7 @@ env:
   ECS_SERVICE: flask              
   SECRET_ID: key-env            
   TASKDEF_FILE: ecs-taskdef.json
-
+  IMAGE_TAG: c14cfa9292ac11e3d3547deb5cc47715c753277f
 jobs:
   deploy:
     runs-on: ubuntu-latest
