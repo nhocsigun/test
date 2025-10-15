@@ -11,7 +11,7 @@ env:
   REGISTRY: 060314909360.dkr.ecr.ap-southeast-2.amazonaws.com
   ECR_REPOSITORY: lab-flask                 
   ECS_CLUSTER: flask          
-  ECS_SERVICE: flask              
+  ECS_SERVICE: lab-flask              
   SECRET_ID: key-env            
   TASKDEF_FILE: ecs-taskdef.json
   IMAGE_TAG: c14cfa9292ac11e3d3547deb5cc47715c753277f
