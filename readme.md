@@ -11,3 +11,4 @@ AWS Lab:
     + Move test.<domain cua m> domain to route53 
     + add DNS: thang19.test.<domain> to the app
 - Advanced task: add ssl to your app, using ACM certificate. (don't export certificate, it will cost 15$)
+####
