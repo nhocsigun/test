@@ -4,7 +4,11 @@ on:
   push:
     branches: [uat]
   workflow_dispatch:
-
+    inputs:
+      image_tag:
+        description: "Optional: chọn image tag để deploy (mặc định là commit SHA)"
+        required: false
+        default: ""
 env:
   AWS_REGION: ap-southeast-2
   AWS_ACCOUNT_ID: 060314909360
