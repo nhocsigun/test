@@ -22,6 +22,10 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+        #BẮT BUỘC cho OIDC (đặt ở cấp job)
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
