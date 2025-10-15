@@ -37,7 +37,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::060314909360:role/gha-oidc-uat-deployer   # <-- thay đúng ARN role của bạn nếu khác
+          role-to-assume: arn:aws:iam::060314909360:role/oidc-uat-deployer   
           role-session-name: github-actions
           aws-region: ${{ env.AWS_REGION }}
 
