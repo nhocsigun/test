@@ -10,7 +10,7 @@ env:
   AWS_ACCOUNT_ID: 060314909360
   REGISTRY: 060314909360.dkr.ecr.ap-southeast-2.amazonaws.com
   ECR_REPOSITORY: lab-flask                 
-  ECS_CLUSTER: flask-cluster          
+  ECS_CLUSTER: flask          
   ECS_SERVICE: flask              
   SECRET_ID: key-env            
   TASKDEF_FILE: ecs-taskdef.json
