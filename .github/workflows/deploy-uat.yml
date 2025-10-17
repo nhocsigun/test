@@ -4,7 +4,7 @@ on:
   push:
     branches: [ uat ]
     paths:
-     - 'app/**'
+      - 'app/**'
   workflow_dispatch:
     inputs:
       image_tag:
