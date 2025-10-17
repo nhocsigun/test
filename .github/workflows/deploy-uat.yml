@@ -3,6 +3,8 @@ name: Deploy UAT (ECS)
 on:
   push:
     branches: [ uat ]
+    paths:
+     - 'app/**'
   workflow_dispatch:
     inputs:
       image_tag:
