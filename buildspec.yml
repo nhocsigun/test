@@ -17,7 +17,7 @@ phases:
     commands:
       - docker push ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG}
       # tên "name" PHẢI bằng containerName trong task definition: flask
-      - printf '[{"name":"flask","imageUri":"%s/%s:%s"}]' ${ECR_URI} ${REPO_NAME} ${IMAGE_TAG} > imagedefinitions.json
+      - printf '[{"name":"flask","imageUri":"%s/%s:%s"}]' ${ECR_URI} ${REPO_NAME} ${IMAGE_TAG} > ecs-taskdef.json
 artifacts:
   files:
-    - imagedefinitions.json
+    - ecs-taskdef.json
