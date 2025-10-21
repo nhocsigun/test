@@ -5,7 +5,6 @@
   "cpu": "256",
   "memory": "512",
   "executionRoleArn": "arn:aws:iam::060314909360:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::060314909360:role/flaskTaskRole",
   "containerDefinitions": [
     {
       "name": "flask",
@@ -23,29 +22,14 @@
         }
       },
       "secrets": [
-        {
-          "name": "DB_HOST",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:060314909360:secret:flask-app/uat:DB_HOST::"
-        },
-        {
-          "name": "DB_USER",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:060314909360:secret:flask-app/uat:DB_USER::"
-        },
-        {
-          "name": "DB_PASS",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:060314909360:secret:flask-app/uat:DB_PASS::"
-        },
-        {
-          "name": "DB_NAME",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:060314909360:secret:flask-app/uat:DB_NAME::"
-        },
-        {
-          "name": "DB_PORT",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:060314909360:secret:flask-app/uat:DB_PORT::"
-        }
+        { "name": "DB_HOST", "valueFrom": "flask-app/uat:DB_HOST::" },
+        { "name": "DB_USER", "valueFrom": "flask-app/uat:DB_USER::" },
+        { "name": "DB_PASS", "valueFrom": "flask-app/uat:DB_PASS::" },
+        { "name": "DB_NAME", "valueFrom": "flask-app/uat:DB_NAME::" },
+        { "name": "DB_PORT", "valueFrom": "flask-app/uat:DB_PORT::" }
       ],
       "healthCheck": {
-        "command": ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"],
+        "command": ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"],
         "interval": 30,
         "timeout": 5,
         "retries": 3,
