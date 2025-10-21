@@ -1,6 +1,6 @@
 [
   {
     "name": "web",
-    "imageUri": "arn:aws:ecs:ap-southeast-2:060314909360:task-definition/lab-flask:1"
+    "imageUri": "arn:aws:ecs:ap-southeast-2:060314909360:task-definition/lab-flask:5"
   }
 ]
