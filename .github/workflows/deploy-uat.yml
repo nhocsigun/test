@@ -17,7 +17,7 @@ env:
   AWS_ACCOUNT_ID: 060314909360
   REGISTRY: 060314909360.dkr.ecr.ap-southeast-2.amazonaws.com
   ECR_REPOSITORY: lab-flask
-  CODEPIPELINE_NAME: cicd-flask-pipeline   # 👈 tên pipeline bạn đã tạo trên AWS
+  CODEPIPELINE_NAME: CICD  # 👈 tên pipeline bạn đã tạo trên AWS
 
 jobs:
   build:
