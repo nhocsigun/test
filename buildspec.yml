@@ -12,12 +12,11 @@ phases:
       - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
   build:
     commands:
-      - docker build -f ./dockerfile -t ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG} .
+      - docker build -f Dockerfile -t ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG} .
   post_build:
     commands:
       - docker push ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG}
-      # tên "name" PHẢI bằng containerName trong task definition: flask
-      - printf '[{"name":"flask","imageUri":"%s/%s:%s"}]' ${ECR_URI} ${REPO_NAME} ${IMAGE_TAG} > ecs-taskdef.json
+      - printf '[{"name":"flask","imageUri":"%s/%s:%s"}]' ${ECR_URI} ${REPO_NAME} ${IMAGE_TAG} > imagedefinitions.json
 artifacts:
   files:
-    - ecs-taskdef.json
+    - imagedefinitions.json
