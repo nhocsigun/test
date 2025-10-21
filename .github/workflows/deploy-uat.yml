@@ -17,16 +17,12 @@ env:
   AWS_ACCOUNT_ID: 060314909360
   REGISTRY: 060314909360.dkr.ecr.ap-southeast-2.amazonaws.com
   ECR_REPOSITORY: lab-flask
-  ECS_CLUSTER: flask
-  ECS_SERVICE: lab-flask
-  SECRET_ID: key-env
-  TASKDEF_FILE: ecs-taskdef.json
+  CODEPIPELINE_NAME: cicd-flask-pipeline   # 👈 tên pipeline bạn đã tạo trên AWS
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
-    # BẮT BUỘC cho OIDC (đặt ở cấp job)
     permissions:
       id-token: write
       contents: read
@@ -35,19 +31,16 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      # Auth bằng OIDC (KHÔNG dùng access key)
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::060314909360:role/oidc-uat-deployer   
+          role-to-assume: arn:aws:iam::060314909360:role/oidc-uat-deployer
           role-session-name: github-actions
           aws-region: ${{ env.AWS_REGION }}
 
-      # Kiểm chứng đang dùng OIDC
       - name: Who am I (verify OIDC)
         run: aws sts get-caller-identity
 
-      # Chọn TAG deploy: ưu tiên input, nếu trống dùng short SHA
       - name: Resolve image tag
         id: tag
         run: |
@@ -61,58 +54,24 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      # --- Lấy secret và tạo file .env ---
-      - name: Fetch Secrets -> .env (ephemeral)
-        id: fetch_secrets
-        shell: bash
-        env:
-          SECRET_ID: ${{ env.SECRET_ID }}
+      # 🔹 Build & Push image lên ECR
+      - name: Build and push Docker image
         run: |
-          set -e
-          echo "Fetching secrets from Secrets Manager..."
-          SECRET_JSON=$(aws secretsmanager get-secret-value \
-            --secret-id "$SECRET_ID" \
-            --query SecretString --output text)
-
-          # Mask all values để không lộ log
-          for v in $(echo "$SECRET_JSON" | jq -r '.[]'); do
-            echo "::add-mask::$v"
-          done
-
-          # Write .env file
-          echo "$SECRET_JSON" | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > .env
-          chmod 600 .env
-          echo ".env file generated"
-
-      # --- Build & Push Docker image ---
-      - name: Build Docker image
-        run: |
-          set -e
-          echo "Building image..."
-          docker build -t $REGISTRY/$ECR_REPOSITORY:latest .
-          docker tag $REGISTRY/$ECR_REPOSITORY:latest $REGISTRY/$ECR_REPOSITORY:${IMAGE_TAG}
-
-      - name: Push image to ECR
-        run: |
-          set -e
-          echo "Pushing image to ECR..."
-          docker push $REGISTRY/$ECR_REPOSITORY:latest
+          docker build -t $REGISTRY/$ECR_REPOSITORY:${IMAGE_TAG} .
           docker push $REGISTRY/$ECR_REPOSITORY:${IMAGE_TAG}
 
-      # --- Rolling update ECS service ---
-      - name: Force new ECS deployment
+      # 🔹 Tạo file imagedefinitions.json — ECS deploy cần file này
+      - name: Generate imagedefinitions.json
         run: |
-          echo "Triggering ECS rolling update..."
-          aws ecs update-service \
-            --cluster "$ECS_CLUSTER" \
-            --service "$ECS_SERVICE" \
-            --force-new-deployment \
-            --region "$AWS_REGION"
-          echo "ECS rolling update started"
+          echo '[{"name":"lab-flask","imageUri":"'"$REGISTRY/$ECR_REPOSITORY:${IMAGE_TAG}"'"}]' > imagedefinitions.json
+          cat imagedefinitions.json
 
-      - name: Show ECS service status
+      # 🔹 Trigger CodePipeline chạy
+      - name: Trigger CodePipeline
         run: |
-          aws ecs describe-services \
-            --cluster "$ECS_CLUSTER" \
-            --services "$ECS_SERVICE" \
-            --query 'services[0].{status:status,desired:desiredCount,running:runningCount}'
+          aws codepipeline start-pipeline-execution --name $CODEPIPELINE_NAME
+
+      # (Tùy chọn) Hiển thị trạng thái pipeline
+      - name: Check CodePipeline status
+        run: |
+          aws codepipeline get-pipeline-state --name $CODEPIPELINE_NAME
