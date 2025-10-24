@@ -1,6 +1,6 @@
 [
   {
-    "name": "web",
-    "imageUri": "060314909360.dkr.ecr.ap-southeast-2.amazonaws.com/lab-flask:uat-123abc"
+    "name": "web-flask",
+    "imageUri": "137259367863.dkr.ecr.ap-southeast-2.amazonaws.com/thang.nguyen-flask:latest"
   }
 ]
