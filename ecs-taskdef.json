@@ -4,11 +4,11 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "256",
   "memory": "512",
-  "executionRoleArn": "arn:aws:iam::060314909360:role/ecsTaskExecutionRole",
+  "executionRoleArn": "arn:aws:iam::137259367863:role/ecsTaskExecutionRole",
   "containerDefinitions": [
     {
       "name": "flask",
-      "image": "060314909360.dkr.ecr.ap-southeast-2.amazonaws.com/lab-flask:REPLACE_TAG",
+      "image": "137259367863.dkr.ecr.ap-southeast-2.amazonaws.com/thang_nguyen_flask:REPLACE_TAG",
       "portMappings": [
         { "containerPort": 5000, "protocol": "tcp" }
       ],
@@ -16,7 +16,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/flask-app",
+          "awslogs-group": "/ecs/thang_nguyen_flask",
           "awslogs-region": "ap-southeast-2",
           "awslogs-stream-prefix": "ecs"
         }
