@@ -27,3 +27,6 @@ phases:
       - 'echo "Generated imagedefinitions.json:"'
       - 'cat imagedefinitions.json'
       - 'ls -l'
+artifacts:
+  file: 
+    - 'imagedefinitions.json'
