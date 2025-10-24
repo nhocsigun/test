@@ -4,7 +4,6 @@ env:
   variables:
     AWS_REGION: ap-southeast-2
     REPO_NAME: thang.nguyen-flask
-
 phases:
   pre_build:
     commands:
