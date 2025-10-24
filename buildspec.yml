@@ -18,5 +18,5 @@ phases:
       - docker push ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG}
       - printf '[{"name":"flask","imageUri":"%s/%s:%s"}]' ${ECR_URI} ${REPO_NAME} ${IMAGE_TAG} > imagedefinitions.json
 artifacts:
-  files:
+ files:
     - imagedefinitions.json
