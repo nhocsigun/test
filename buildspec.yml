@@ -1,32 +1,52 @@
 version: 0.2
 
 env:
+  shell: bash     
   variables:
     AWS_REGION: ap-southeast-2
     REPO_NAME: thang.nguyen-flask
+
 phases:
   pre_build:
     commands:
-      - 'echo "== pre_build =="'
-      - 'ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)'
-      - 'ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com'
-      - 'aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${ECR_URI}'
-      - 'IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}'
-      - 'echo "IMAGE_TAG=${IMAGE_TAG}"'
+      - echo "== pre_build =="
+      # Lấy AWS account ID
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - echo "ACCOUNT_ID=${ACCOUNT_ID}"
+
+      # Tạo ECR URI cho repo
+      - ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+      - echo "ECR_URI=${ECR_URI}"
+
+      # Đăng nhập ECR
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${ECR_URI}
+      - echo "Login Succeeded"
+
+      # Tạo IMAGE_TAG = 7 ký tự đầu của commit ID
+      # Nếu bạn muốn bash substring thay vì cut, có thể dùng: IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - echo "IMAGE_TAG=${IMAGE_TAG}"
 
   build:
     commands:
-      - 'echo "== build =="'
-      - 'docker build -f Dockerfile -t ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG} .'
+      - echo "== build =="
+      - echo "Building image ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG}"
+      - docker build -f Dockerfile -t ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG} .
 
   post_build:
     commands:
-      - 'echo "== post_build =="'
-      - 'docker push ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG}'
-      - 'printf ''[{"name":"flask","imageUri":"%s/%s:%s"}]'' ${ECR_URI} ${REPO_NAME} ${IMAGE_TAG} > imagedefinitions.json'
-      - 'echo "Generated imagedefinitions.json:"'
-      - 'cat imagedefinitions.json'
-      - 'ls -l'
+      - echo "== post_build =="
+      - echo "Pushing image ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG}"
+      - docker push ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG}
+
+      # Tạo file imagedefinitions.json cho CodeDeploy / ECS deploy stage
+      - printf '[{"name":"flask","imageUri":"%s/%s:%s"}]' ${ECR_URI} ${REPO_NAME} ${IMAGE_TAG} > imagedefinitions.json
+
+      - echo "Generated imagedefinitions.json:"
+      - cat imagedefinitions.json
+
+      - ls -l
+
 artifacts:
-  file: 
-    - 'imagedefinitions.json'
+  files:
+    - imagedefinitions.json
