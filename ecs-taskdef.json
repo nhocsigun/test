@@ -21,13 +21,6 @@
           "awslogs-stream-prefix": "ecs"
         }
       },
-      "secrets": [
-        { "name": "DB_HOST", "valueFrom": "flask-app/uat:DB_HOST::" },
-        { "name": "DB_USER", "valueFrom": "flask-app/uat:DB_USER::" },
-        { "name": "DB_PASS", "valueFrom": "flask-app/uat:DB_PASS::" },
-        { "name": "DB_NAME", "valueFrom": "flask-app/uat:DB_NAME::" },
-        { "name": "DB_PORT", "valueFrom": "flask-app/uat:DB_PORT::" }
-      ],
       "healthCheck": {
         "command": ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"],
         "interval": 30,
